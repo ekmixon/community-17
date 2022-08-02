@@ -33,11 +33,7 @@ class Author(object):
 
     @property
     def email(self):
-        emails = list(self._emails or [])
-        if emails:
-            # This is horrible simplistic and probably wont work long term.
-            return sorted(emails)[0]
-        return None
+        return sorted(emails)[0] if (emails := list(self._emails or [])) else None
 
     @email.setter
     def email(self, email):
@@ -85,20 +81,17 @@ author_cache = {}
 for repo in org.repositories():
     # Skip these repos as they are not a core part of the project, and are
     # forked/imported so contain many contributors from outside the project.
-    if str(repo) in ['kata-containers/linux', 'kata-containers/qemu']:
-        print('Skipping repo %s' % (repo))
+    if str(repo) in {'kata-containers/linux', 'kata-containers/qemu'}:
+        print(f'Skipping repo {repo}')
         continue
-    print('Looking for changes in %s between %s and %s' %
-          (repo, start_time, end_time))
+    print(f'Looking for changes in {repo} between {start_time} and {end_time}')
 
     authors = AuthorSet()
     for commit in repo.commits(since=start_time, until=end_time,
                                number=number):
         if commit.author is None:
-            print('%s in %s has no author did this merge via GitHub?' %
-                  (commit, repo))
-            print('%s Appears to be from: %s' %
-                  (commit, commit.commit.author))
+            print(f'{commit} in {repo} has no author did this merge via GitHub?')
+            print(f'{commit} Appears to be from: {commit.commit.author}')
             continue
 
         if commit.author.login not in author_cache:
@@ -117,16 +110,16 @@ for repo in org.repositories():
         if author.name is None and commit.commit.author.get('name'):
             author.name = commit.commit.author.get('name')
 
-        # last ditch effort did the author use a valid email address in the
-        # DCO line?
-        match = dco_re.search(commit.message)
-        if match:
-            if ((author.email is None or
-                    'users.noreply.github.com' in author.email) and
-                    match.group('email')):
-                author.email = match.group('email')
-            if author.name is None and match.group('name'):
-                author.name = match.group('name')
+        if match := dco_re.search(commit.message):
+            if (
+                (
+                    author.email is None
+                    or 'users.noreply.github.com' in author.email
+                )
+            ) and match['email']:
+                author.email = match['email']
+            if author.name is None and match['name']:
+                author.name = match['name']
         authors.add(author)
     projects.append({str(repo): authors})
 
